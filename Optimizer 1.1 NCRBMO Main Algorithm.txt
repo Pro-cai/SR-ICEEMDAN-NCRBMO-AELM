@@ -1,0 +1,176 @@
+Algorithm 1: NCRBMO 
+-----------------------------------------------------------------------
+Input:  Population size (N), Maximum iterations (T), Dimension (dim),
+        Lower bound (lb), Upper bound (ub), Objective function (fobj)
+Output: Global best position (BestX), Best fitness (BestF), 
+        Convergence curve (curve)
+-----------------------------------------------------------------------
+
+1.  // Initialization Phase
+    a. Initialize population using multi-phase chaotic mapping (Algorithm 2):
+       PopPos = multi_chaotic_op(N, dim, ub, lb, fobj)
+       
+    b. Evaluate initial population:
+       for i = 1 to N do
+           PopFit(i) = fobj(PopPos(i, :))
+       end for
+       
+    c. Initialize global best and worst solutions:
+       BestF = inf, BestX = []
+       WorstF = -inf, WorstX = []
+       
+    d. Identify initial best and worst solutions:
+       for i = 1 to N do
+           if PopFit(i) ≤ BestF then
+               BestF = PopFit(i)
+               BestX = PopPos(i, :)
+           end if
+           if PopFit(i) ≥ WorstF then
+               WorstF = PopFit(i)
+               WorstX = PopPos(i, :)
+           end if
+       end for
+       
+    e. Set algorithm parameters:
+       Epsilon = 0.5, curve = zeros(T, 1)
+
+2.  // Main Optimization Loop
+    for t = 1 to T do
+        for i = 1 to N do
+            
+            // Calculate switching coefficient
+            theta1 = (1 - t/T)
+            B = 2 × ln(1/rand()) × theta1
+            
+            // GLOBAL EXPLORATION PHASE (B > 0.5)
+            if B > 0.5 then
+                
+                // 2.1.1 Group Search Behavior
+                Randomly select p ∈ [2, 5] individuals → selected_index_p
+                Xp = PopPos(selected_index_p, :)
+                Xpmean = mean(Xp)
+                
+                Randomly select q ∈ [10, N] individuals → selected_index_q
+                Xq = PopPos(selected_index_q, :)
+                Xqmean = mean(Xq)
+                
+                Randomly select reference individual R1
+                
+                if rand() < Epsilon then
+                    Y = PopPos(i, :) + (Xpmean - PopPos(R1, :)) × rand()
+                else
+                    Y = PopPos(i, :) + (Xqmean - PopPos(R1, :)) × rand()
+                end if
+                
+                // 2.1.2 Foraging with Normal Cloud Model
+                if rand() < 0.5 then
+                    // Lévy flight strategy
+                    Z = (Y - BestX) × Levy(dim) + rand() × mean(Y) × (1 - t/T)^(2 × t/T)
+                else
+                    // Normal cloud model strategy
+                    Ex = BestX                             // Expectation
+                    En = exp(t/T)                         // Entropy
+                    He = En / 10^(-3)                     // Hyper-entropy
+                    
+                    E_n = normrnd(En, He, 1, dim)        // Normally distributed random numbers
+                    ra = normrnd(Ex, abs(E_n), 1, dim)   // Normal random numbers
+                    
+                    // Calculate membership function
+                    Z = exp(-(ra - Ex).^2 ./ (2 × E_n.^2))
+                    
+                    // Map to original search space
+                    Z = lb + Z × (ub - lb)
+                end if
+                
+                // Boundary handling for candidates
+                Y = SpaceBound(Y, ub, lb)
+                Z = SpaceBound(Z, ub, lb)
+                
+                // Select better candidate
+                if fobj(Y) < fobj(Z) then
+                    newPopPos = Y
+                else
+                    newPopPos = Z
+                end if
+                
+            // LOCAL EXPLOITATION PHASE (B ≤ 0.5)
+            else
+                F = 0.5
+                K = [1:(i-1), (i+1):N]
+                f = (0.1 × (rand() - 1) × (T - t)) / T
+                
+                // Find valid step vector
+                repeat
+                    RandInd = K(randi([1, N-1], 1, 3))
+                    step1 = PopPos(RandInd(2), :) - PopPos(RandInd(3), :)
+                until norm(step1) ≠ 0 AND RandInd(2) ≠ RandInd(3)
+                
+                // 2.2.1 Attacking Prey Behavior
+                CF = (1 - t/T)^(2 × t/T)                // Convergence factor
+                
+                Randomly select p ∈ [2, 5] individuals → selected_index_p
+                Xp = PopPos(selected_index_p, :)
+                Xpmean = mean(Xp)
+                
+                Randomly select q ∈ [10, N] individuals → selected_index_q
+                Xq = PopPos(selected_index_q, :)
+                Xqmean = mean(Xq)
+                
+                if rand() < Epsilon then
+                    W_R = BestX + CF × (Xpmean - PopPos(i, :)) × randn(1, dim)
+                else
+                    W_R = BestX + CF × (Xqmean - PopPos(i, :)) × randn(1, dim)
+                end if
+                
+                // 2.2.2 Expansion Search Behavior
+                if rand() < 0.5 then
+                    W_I = BestX + F × step1
+                else
+                    W_I = BestX + F × Levy(dim) × step1
+                end if
+                Y = (1 + f) × W_I
+                
+                // 2.2.3 Benefit-Seeking and Risk-Avoidance Behavior
+                Z = PopPos(i, :) + rand() × (BestX - |PopPos(i, :)|) - rand() × (WorstX - |PopPos(i, :)|)
+                
+                // Boundary handling for candidates
+                W_R = SpaceBound(W_R, ub, lb)
+                Y = SpaceBound(Y, ub, lb)
+                Z = SpaceBound(Z, ub, lb)
+                
+                // Select best candidate among three
+                candidates = [W_R; Y; Z]
+                fitness = [fobj(W_R); fobj(Y); fobj(Z)]
+                [~, best_idx] = min(fitness)
+                newPopPos = candidates(best_idx, :)
+            end if
+            
+            // 2.3 Greedy Selection
+            newPopPos = SpaceBound(newPopPos, ub, lb)
+            newPopFit = fobj(newPopPos)
+            
+            if newPopFit < PopFit(i) then
+                PopFit(i) = newPopFit
+                PopPos(i, :) = newPopPos
+            end if
+        end for
+        
+        // 2.4 Elite Preservation Mechanism
+        for i = 1 to N do
+            if PopFit(i) < BestF then
+                BestF = PopFit(i)
+                BestX = PopPos(i, :)
+            end if
+            if PopFit(i) > WorstF then
+                WorstF = PopFit(i)
+                WorstX = PopPos(i, :)
+            end if
+        end for
+        
+        // Record convergence
+        curve(t) = BestF
+    end for
+
+3.  // Return Results
+    return BestF, BestX, curve
+-----------------------------------------------------------------------

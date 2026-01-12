@@ -1,0 +1,74 @@
+Algorithm 2: multi_chaotic_op - Multi-phase Chaotic Mapping with Inverse Generation
+-----------------------------------------------------------------------
+Input:  Population size (N), Dimension (dim), 
+        Upper bound (ub), Lower bound (lb), Objective function (fobj)
+Output: Initialized population (pop)
+-----------------------------------------------------------------------
+
+1.  // Parameter Setup
+    m = ceil(dim/2)                  // Boundary dimension
+    n_values = [2, 3, 4, 5]          // Chebyshev polynomial orders
+
+2.  // Initialize chaotic sequence
+    Chaotic = rand(N, dim)
+    
+3.  // Generate chaotic sequences using multi-phase mapping
+    for i = 1 to N do
+        // Randomly select Chebyshev order
+        n = n_values(randi(length(n_values)))
+        
+        for j = 2 to dim do
+            if j < m then
+                // Tent mapping for lower dimensions
+                alpha = 0.499
+                if Chaotic(i, j-1) < alpha then
+                    Chaotic(i, j) = Chaotic(i, j-1) / alpha
+                else
+                    Chaotic(i, j) = (1 - Chaotic(i, j-1)) / (1 - alpha)
+                end if
+            else
+                // Chebyshev mapping for higher dimensions
+                x_normalized = 2 × Chaotic(i, j-1) - 1
+                chebyshev_value = cos(n × arccos(x_normalized))
+                Chaotic(i, j) = (chebyshev_value + 1) / 2
+            end if
+        end for
+    end for
+
+4.  // Generate original and opposition-based populations
+    X = Chaotic
+    Positions = zeros(N, dim)
+    OP_Positions = zeros(N, dim)
+    Fit = zeros(1, N)
+    OP_Fit = zeros(1, N)
+    
+    for i = 1 to N do
+        // Original population
+        Positions(i, :) = lb + X(i, :) × (ub - lb)
+        
+        // Opposition-based population with random perturbation
+        OP_Positions(i, :) = lb + ub - Positions(i, :)
+        random_factor = 0.1 × rand(1, dim)
+        OP_Positions(i, :) = OP_Positions(i, :) + random_factor × (ub - lb)
+        
+        // Boundary handling for opposition population
+        OP_Positions(i, :) = max(OP_Positions(i, :), lb)
+        OP_Positions(i, :) = min(OP_Positions(i, :), ub)
+        
+        // Evaluate fitness
+        Fit(i) = fobj(Positions(i, :))
+        OP_Fit(i) = fobj(OP_Positions(i, :))
+    end for
+
+5.  // Merge and select fittest individuals
+    All_Fit = [Fit, OP_Fit]
+    All_Positions = [Positions; OP_Positions]
+    
+    // Sort by fitness in ascending order
+    [~, index] = sort(All_Fit)
+    
+    // Select top N individuals
+    pop = All_Positions(index(1:N), :)
+    
+    return pop
+-----------------------------------------------------------------------

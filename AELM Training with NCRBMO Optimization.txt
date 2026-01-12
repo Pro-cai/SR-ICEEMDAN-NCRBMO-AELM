@@ -1,0 +1,67 @@
+Algorithm: NCRBMO-Optimized Adaptive Extreme Learning Machine (AELM)
+-----------------------------------------------------------------------
+Input: 
+  - Training data: p_train (normalized features), t_train (normalized targets)
+  - Network structure: inputnum, hiddennum
+  - NCRBMO parameters: pop, Max_iteration
+  - Bounds: lb, ub
+
+Output:
+  - Optimized ELM weights: IW (input weights), B (biases)
+  - Output weights: LW
+-----------------------------------------------------------------------
+
+1.  // OBJECTIVE FUNCTION DEFINITION
+    Function getObjValue(weights):
+        a. // RESHAPE WEIGHTS
+           w1 = weights(1:inputnum × hiddennum)
+           B1 = weights(inputnum × hiddennum + 1:end)
+           IW = reshape(w1, hiddennum, inputnum)
+           B = reshape(B1, hiddennum, 1)
+        
+        b. // CALCULATE HIDDEN LAYER OUTPUT
+           H = sigmoid(IW × p_train + repmat(B, 1, size(p_train, 2)))
+        
+        c. // CALCULATE OUTPUT WEIGHTS (Moore-Penrose pseudoinverse)
+           LW = pinv(H') × t_train'
+        
+        d. // CALCULATE PREDICTION
+           Y_pred = (H' × LW)'
+        
+        e. // CALCULATE FITNESS (Mean Square Error)
+           fitness = mean((t_train - Y_pred).^2)
+        
+        Return fitness
+    End Function
+
+2.  // APPLY NCRBMO OPTIMIZATION
+    a. Define optimization problem:
+       - Objective: minimize getObjValue(weights)
+       - Search space: weights ∈ [lb, ub]
+       - Dimensions: dim = inputnum × hiddennum + hiddennum
+    
+    b. Run NCRBMO optimization:
+       [Best_score, Best_pos, curve] = NCRBMO(pop, Max_iteration, lb, ub, dim, @getObjValue)
+
+3.  // EXTRACT OPTIMAL WEIGHTS
+    a. Extract from Best_pos:
+       - w1 = Best_pos(1:inputnum × hiddennum)
+       - B1 = Best_pos(inputnum × hiddennum + 1:end)
+    
+    b. Reshape to AELM format:
+       - IW = reshape(w1, hiddennum, inputnum)  // Input to hidden weights
+       - B = reshape(B1, hiddennum, 1)          // Hidden layer biases
+
+4.  // TRAIN ELM WITH OPTIMAL WEIGHTS
+    a. Calculate hidden layer output:
+       H = sigmoid(IW × p_train + repmat(B, 1, size(p_train, 2)))
+    
+    b. Calculate output weights:
+       LW = pinv(H') × t_train'  // Using pseudoinverse
+    
+    c. Set activation function and type:
+       TF = 'sig'  // Sigmoid activation
+       TYPE = 0    // Regression problem
+
+5.  Return: IW, B, LW, TF, TYPE
+-----------------------------------------------------------------------

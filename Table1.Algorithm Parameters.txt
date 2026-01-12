@@ -1,0 +1,20 @@
+Parameter Name	Symbol	Default Value	Value Range	Description
+
+Population Size	N	30	20-200	Number of individuals in the population
+Maximum Iterations	T	500	100-5000	Termination condition of the algorithm
+Problem Dimension	dim	30	1-1000	Dimensionality of the optimization problem
+Lower Bound	lb	-100	Problem-dependent	Lower bound of the search space
+Upper Bound	ub	100	Problem-dependent	Upper bound of the search space
+Switching Coefficient	B	Dynamic	(0, ∞)	Controls global exploration vs. local exploitation: B>0.5 for exploration, B≤0.5 for exploitation
+Switching Parameter	θ₁	1 - t/T	[0, 1]	Time-varying parameter influencing switching behavior
+Epsilon Parameter	ε	0.5	(0, 1)	Controls selection between small group (p) and large group (q) means
+Lévy Flight Exponent	β	1.5	(0, 2)	Controls the heavy-tailed distribution of Lévy flights
+Scaling Factor	F	0.5	(0, 1)	Controls step size in expansion search behavior
+Convergence Factor	CF	(1 - t/T)^{2t/T}	[0, 1]	Time-varying factor controlling convergence speed
+Tent Map Parameter	α	0.499	(0, 1)	Parameter of the Tent chaotic map
+Chebyshev Polynomial Orders	n	{2, 3, 4, 5}	Integer ≥ 2	Different orders produce different chaotic characteristics
+Boundary Dimension	m	[dim/2]	[1, dim]	Dimension threshold for switching between Tent and Chebyshev maps
+Opposition Learning Factor	δ	0.1	(0, 1)	Random perturbation factor in opposition-based learning
+Normal Cloud Expectation	Ex	BestX	Search space	Expected value (center) of the normal cloud model
+Normal Cloud Entropy	En	exp(t/T)	(0, ∞)	Measure of uncertainty in the normal cloud model
+Normal Cloud Hyper-Entropy	He	En/10^{-3}	(0, ∞)	Entropy of the entropy in the normal cloud model

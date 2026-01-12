@@ -1,0 +1,8 @@
+Problem Type	Recommended N	Recommended T	Special Considerations
+
+Low-dimensional (<10D)	20-30	100-500	Focus on exploitation, reduce exploration components
+Medium-dimensional (10-100D)	30-50	500-1000	Balance exploration and exploitation
+High-dimensional (>100D)	50-100	1000-5000	Emphasize exploration, increase population diversity
+Multimodal problems	50-100	1000-2000	Increase population size and exploration components
+Unimodal problems	20-50	500-1000	Focus on exploitation, reduce population size
+Constrained optimization	30-50	1000-2000	May require modification of boundary handling

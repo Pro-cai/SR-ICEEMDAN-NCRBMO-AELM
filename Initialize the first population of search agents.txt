@@ -1,0 +1,34 @@
+Algorithm: This function initialize the first population of search agents
+-----------------------------------------------------------------------
+Input:  Number of search agents (SearchAgents_no), Dimension (dim),
+        Upper bound (ub), Lower bound (lb)
+Output: Initial population positions (Positions)
+-----------------------------------------------------------------------
+
+1.  // Determine the number of boundaries
+    Boundary_no = size(ub, 2)
+
+2.  // Case 1: All variables have the same boundaries (single ub and lb values)
+    if Boundary_no == 1 then
+        for i = 1 to SearchAgents_no do
+            for j = 1 to dim do
+                // Generate random position within [lb, ub]
+                Positions(i, j) = rand() × (ub - lb) + lb
+            end for
+        end for
+
+3.  // Case 2: Each variable has different boundaries (ub and lb are vectors)
+    else if Boundary_no > 1 then
+        for j = 1 to dim do
+            ub_j = ub(j)                 // Get upper bound for dimension j
+            lb_j = lb(j)                 // Get lower bound for dimension j
+            
+            for i = 1 to SearchAgents_no do
+                // Generate random position within [lb_j, ub_j]
+                Positions(i, j) = rand() × (ub_j - lb_j) + lb_j
+            end for
+        end for
+    end if
+
+4.  return Positions
+-----------------------------------------------------------------------

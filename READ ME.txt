@@ -1,0 +1,39 @@
+# NCRBMO Algorithm and Hybrid Prediction System
+
+## 1. Data Availability Statement
+This repository contains the source code and datasets corresponding to the following research paper published in **Scientific Reports**:
+
+**Title:** Hybrid Prediction System for Reliable Multi-Seasonal Sustainable Energy Generation under Meteorological and Environmental Volatility  
+**Corresponding Author:** Changlong Cai  
+
+### Citation Requirement
+If you use this code or dataset for reproduction, comparative experiments, or any further research, please cite the original paper.
+
+---
+
+## 2. Repository Contents
+
+### 2.1 Algorithm & Implementation
+This repository provides a complete logic flow of our methodology to ensure full transparency and reproducibility:
+* **Core NCRBMO Source Code:** Full implementation of the Normal Cloud Red-billed Blue Magpie Optimization (NCRBMO) algorithm.
+* **Algorithm Pseudocode:** Detailed pseudocode for the NCRBMO.
+* **System Architecture:** High-level pseudocode for all constituent components of the Hybrid Prediction System (ICEEMDAN-NCRBMO-AELM).
+
+**Key Technical Details Included:**
+* Detailed model hyperparameters and initialization settings.
+* Main loop structures and core operational steps.
+* Key conditional logic and decision-making processes.
+
+### 2.2 Dataset Description
+The dataset provided is derived from a **Wind Farm in Jiangsu**, used for the performance evaluation in our study.
+
+* **Privacy & Anonymization:** Due to commercial sensitivity and privacy constraints, the raw data cannot be disclosed in its original form. 
+
+**Data Integrity & Verifiability:** To ensure the verifiability of the research findings, we have uploaded a **strictly anonymized and processed derivative dataset** specifically used in our experiments. This version preserves the essential statistical features, temporal correlations, and patterns required to fully validate the effectiveness and robustness of the proposed model.
+
+---
+
+## 3. License
+This project is licensed under the **Apache License Version 2.0**.  
+You are free to use, modify, and conduct comparative experiments, provided that the original authors are credited via the citation mentioned above.
+

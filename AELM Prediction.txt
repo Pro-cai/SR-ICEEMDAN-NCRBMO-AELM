@@ -1,0 +1,21 @@
+Algorithm: Adaptive Extreme Learning Machine Prediction
+-----------------------------------------------------------------------
+Input:
+  - Test data: p_test (normalized features)
+  - Trained parameters: IW, B, LW, TF, TYPE
+  - Activation function type: TF
+
+Output:
+  - Predictions: t_sim (normalized)
+-----------------------------------------------------------------------
+
+1.  // CALCULATE HIDDEN LAYER OUTPUT
+    H_test = activation_function(IW × p_test + repmat(B, 1, size(p_test, 2)), TF)
+    // Where activation_function applies the specified activation (e.g., sigmoid)
+
+2.  // CALCULATE PREDICTIONS
+    t_sim = (H_test' × LW)'
+
+3.  // RETURN PREDICTIONS
+    Return t_sim
+-----------------------------------------------------------------------

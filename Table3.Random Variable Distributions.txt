@@ -1,0 +1,7 @@
+Random Variable	Distribution Type	Range/Parameters	Usage
+
+rand()	Uniform distribution	[0, 1]	Most random selections and controls
+randn()	Standard normal distribution	N(0, 1)	Normal cloud model and attacking prey behavior
+randi([a,b])	Discrete uniform distribution	Integer in [a, b]	Random selection of individual indices
+normrnd(μ,σ)	Normal distribution	N(μ, σ²)	Random number generation in normal cloud model
+Levy(dim)	Lévy distribution	Heavy-tailed, parameter β=1.5	Long-distance exploration steps

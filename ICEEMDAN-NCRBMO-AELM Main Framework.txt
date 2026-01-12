@@ -1,0 +1,181 @@
+Algorithm: ICEEMDAN-NCRBMO-AELM for Wind Power Prediction
+-----------------------------------------------------------------------
+Input: 
+  - Wind power data file (e.g., 'wind_power_december.xlsx')
+  - ICEEMDAN parameters: Nstd, NR, Maxlter
+  - Data split ratio: num_size (train/test split)
+  - AELM parameters: hiddennum (hidden layer nodes)
+  - NCRBMO parameters: pop, Max_iteration
+
+Output:
+  - Training and testing predictions
+  - Performance metrics (R², MAE, RMSE, MAPE)
+  - Decomposition plots and prediction comparison plots
+-----------------------------------------------------------------------
+
+1.  // DATA LOADING AND PREPROCESSING
+    a. Load data: res = read_excel('wind_power_december.xlsx')
+    b. Extract target: data = res(:, last_column)
+    c. Set random seed for reproducibility (optional)
+
+2.  // ICEEMDAN DECOMPOSITION
+    a. Set ICEEMDAN parameters:
+       - Nstd = 0.4 (noise standard deviation)
+       - NR = 100 (number of realizations)
+       - Maxlter = 100 (maximum iterations)
+    
+    b. Apply ICEEMDAN decomposition:
+       - anmodes = ceemdan(data, Nstd, NR, Maxlter)
+       - [a, b] = size(anmodes)  // a: number of IMFs, b: length
+    
+    c. Visualize decomposition results:
+       - Plot each IMF component separately
+       - Set title: 'Complete Ensemble Empirical Mode Decomposition with Adaptive Noise'
+
+3.  // INITIALIZE PREDICTION ARRAYS
+    a. Transpose IMFs: imf = anmodes'
+    b. Initialize prediction arrays:
+       - T_sim1_imf = cell(1, a)  // Training predictions for each IMF
+       - T_sim2_imf = cell(1, a)  // Testing predictions for each IMF
+
+4.  // PREDICTION FOR EACH IMF COMPONENT
+    For i = 1 to a do:
+        a. // DATA PREPARATION FOR CURRENT IMF
+           - Set training ratio: num_size = 0.8
+           - outdim = 1 (single output)
+           - num_samples = size(res, 1)
+           - num_train_s = round(num_size * num_samples)
+           - f_ = size(res, 2) - outdim
+        
+        b. // SPLIT TRAINING AND TESTING SETS
+           - P_train = res(1:num_train_s, 1:f_)'  // Training features
+           - T_train = imf(1:num_train_s, i)'      // Training target (current IMF)
+           - M = size(P_train, 2)                  // Number of training samples
+           
+           - P_test = res(num_train_s+1:end, 1:f_)' // Testing features
+           - T_test = imf(num_train_s+1:end, i)'    // Testing target (current IMF)
+           - N = size(P_test, 2)                    // Number of testing samples
+        
+        c. // DATA NORMALIZATION
+           - Normalize features: [p_train, ps_input] = mapminmax(P_train, 0, 1)
+           - Apply same normalization to test: p_test = mapminmax('apply', P_test, ps_input)
+           
+           - Normalize target: [t_train, ps_output] = mapminmax(T_train, 0, 1)
+           - Apply same normalization to test: t_test = mapminmax('apply', T_test, ps_output)
+        
+        d. // FORMAT CONVERSION FOR AELM
+           // Convert to cell arrays for AELM training
+           For ii = 1 to M:
+               vp_train{ii, 1} = p_train(:, ii)
+               vt_train{ii, 1} = t_train(:, ii)
+           End For
+           
+           For ii = 1 to N:
+               vp_test{ii, 1} = p_test(:, ii)
+               vt_test{ii, 1} = t_test(:, ii)
+           End For
+        
+        e. // SET AELM AND SRNCRBMO PARAMETERS
+           - inputnum = size(p_train, 1)        // Number of input nodes
+           - hiddennum = 30                     // Number of hidden nodes
+           
+           // Define optimization problem
+           - fun = @getObjValue                 // Objective function for AELM weights
+           - dim = inputnum × hiddennum + hiddennum  // Total parameters to optimize
+           - lb = -1 × ones(1, dim)             // Lower bounds
+           - ub = 1 × ones(1, dim)              // Upper bounds
+           - pop = 20                           // Population size for NCRBMO
+           - Max_iteration = 30                 // Maximum iterations for NCRBMO
+        
+        f. // APPLY NCRBMO OPTIMIZATION
+           - [Best_score, Best_pos, curve] = NCRBMO(pop, Max_iteration, lb, ub, dim, fun)
+        
+        g. // EXTRACT OPTIMAL ELM WEIGHTS
+           - w1 = Best_pos(1:inputnum × hiddennum)
+           - B1 = Best_pos(inputnum × hiddennum + 1:end)
+           - IW = reshape(w1, hiddennum, inputnum)  // Input weights
+           - B = reshape(B1, hiddennum, 1)          // Hidden layer biases
+        
+        h. // TRAIN ELM WITH OPTIMIZED WEIGHTS
+           - [IW, B, LW, TF, TYPE] = elmtrain(p_train, t_train, 'sig', 0, IW, B)
+        
+        i. // PREDICT WITH TRAINED ELM
+           - t_sim1 = elmpredict(p_train, IW, B, LW, TF, TYPE)  // Training prediction
+           - t_sim2 = elmpredict(p_test, IW, B, LW, TF, TYPE)   // Testing prediction
+        
+        j. // DENORMALIZE PREDICTIONS
+           - T_sim1_imf_temp = mapminmax('reverse', t_sim1, ps_output)
+           - T_sim2_imf_temp = mapminmax('reverse', t_sim2, ps_output)
+        
+        k. // STORE PREDICTIONS FOR CURRENT IMF
+           - T_sim1_imf{i} = T_sim1_imf_temp
+           - T_sim2_imf{i} = T_sim2_imf_temp
+        
+        l. Display progress: ['IMF ', i, ' completed']
+    End For
+
+5.  // COMBINE IMF PREDICTIONS
+    a. Initialize combined predictions:
+       - T_sim1 = zeros(size(T_sim1_imf{1}))  // Combined training prediction
+       - T_sim2 = zeros(size(T_sim2_imf{1}))  // Combined testing prediction
+    
+    b. Sum all IMF predictions:
+       For i = 1 to a:
+           T_sim1 = T_sim1 + T_sim1_imf{i}
+           T_sim2 = T_sim2 + T_sim2_imf{i}
+       End For
+    
+    c. Extract original targets for comparison:
+       - T_train_original = res(1:num_train_s, f_ + 1: end)'
+       - T_test_original = res(num_train_s + 1: end, f_ + 1: end)'
+
+6.  // VISUALIZATION
+    a. Plot training set comparison:
+       - Figure 1: Plot T_train_original vs T_sim1
+       - X-axis: Sample number (1 to M)
+       - Y-axis: Wind power data
+       - Title: 'Training set prediction comparison'
+       - Legend: 'Actual value' and 'CEEMDAN-SRNCRBMO-ELM'
+    
+    b. Plot testing set comparison:
+       - Figure 2: Plot T_test_original vs T_sim2
+       - X-axis: Sample number (1 to N)
+       - Y-axis: Wind power data
+       - Title: 'Testing set prediction comparison'
+       - Legend: 'Actual value' and 'CEEMDAN-SRNCRBMO-ELM'
+
+7.  // PERFORMANCE EVALUATION
+    a. Calculate R² (Coefficient of Determination):
+       - R1_train = 1 - norm(T_train_original - T_sim1)² / norm(T_train_original - mean(T_train_original))²
+       - R2_test = 1 - norm(T_test_original - T_sim2)² / norm(T_test_original - mean(T_test_original))²
+    
+    b. Calculate MAE (Mean Absolute Error):
+       - MAE_train = sum(abs(T_sim1 - T_train_original)) / M
+       - MAE_test = sum(abs(T_sim2 - T_test_original)) / N
+    
+    c. Calculate RMSE (Root Mean Square Error):
+       - RMSE_train = sqrt(sum((T_sim1 - T_train_original)²) / M)
+       - RMSE_test = sqrt(sum((T_test_original - T_sim2)²) / N)
+    
+    d. Calculate MAPE (Mean Absolute Percentage Error):
+       - MAPE_train = mean(abs((T_train_original - T_sim1) / T_train_original))
+       - MAPE_test = mean(abs((T_test_original - T_sim2) / T_test_original))
+    
+    e. Display all metrics:
+       - Print: 'Training R²: ', R1_train
+       - Print: 'Testing R²: ', R2_test
+       - Print: 'Training MAE: ', MAE_train
+       - Print: 'Testing MAE: ', MAE_test
+       - Print: 'Training RMSE: ', RMSE_train
+       - Print: 'Testing RMSE: ', RMSE_test
+       - Print: 'Training MAPE: ', MAPE_train
+       - Print: 'Testing MAPE: ', MAPE_test
+
+8.  // OPTIONAL: SAVE RESULTS
+    // Uncomment as needed for different months
+    // Example for December:
+    //   save_to_excel(T_sim1, 'December_training_predictions.xlsx')
+    //   save_to_excel(T_sim2, 'December_testing_predictions.xlsx')
+
+9.  Return: T_sim1, T_sim2, performance metrics
+-----------------------------------------------------------------------

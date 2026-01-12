@@ -1,0 +1,174 @@
+Algorithm : ICEEMDAN - Improved Complete Ensemble Empirical Mode Decomposition with Adaptive Noise
+-----------------------------------------------------------------------
+Input:  Signal (x), Noise standard deviation (Nstd), 
+        Number of realizations (NR), Maximum iterations (MaxIter),
+        Scaling coefficient (lambda_scale)
+Output: Intrinsic Mode Functions (modes), Sifting iterations (its)
+-----------------------------------------------------------------------
+
+1.  // Initialization and Normalization
+    if lambda_scale is not provided then
+        lambda_scale = 10                   // Default scaling coefficient
+    end if
+    
+    x = x / std(x)                          // Normalize input signal
+    modes = zeros(size(x))                  // Initialize IMFs matrix
+    max_modes = round(log2(length(x)) + 5)  // Maximum possible IMFs
+    iter = zeros(NR, max_modes)             // Iteration tracking matrix
+
+2.  // Generate Noise Realizations and their EMD Modes
+    for i = 1 to NR do
+        white_noise[i] = randn(size(x))                     // White Gaussian noise
+        modes_white_noise[i] = emd(white_noise[i])          // EMD modes of noise
+    end for
+
+3.  // Extract First IMF with Dynamic Noise Infusion
+    for i = 1 to NR do
+        // Calculate dynamic noise weight
+        f1 = estimate_dominant_frequency(x, 1)
+        η1 = 1 / (1 + lambda_scale × f1)
+        
+        // Add weighted noise and perform EMD
+        temp_signal = x + η1 × Nstd × white_noise[i]
+        [temp_imfs, ~, it] = emd(temp_signal, 'MAXMODES', 1, 'MAXITERATIONS', MaxIter)
+        
+        // Store results
+        if temp_imfs is not empty then
+            temp = temp_imfs(1, :)
+        else
+            temp = temp_signal
+        end if
+        
+        aux = aux + temp / NR
+        iter(i, 1) = it
+    end for
+    
+    modes = aux                              // First IMF
+    k = 1                                    // IMF counter
+    acum = sum(modes, 1)                     // Current residual
+
+4.  // Extract Remaining IMFs with Adaptive Noise Strategy
+    while stop_criterion(x, acum) is true do
+        // Calculate adaptive noise weight for current mode
+        f_k = estimate_dominant_frequency(x - acum, k+1)
+        η_k = 1 / (1 + lambda_scale × f_k)
+        
+        for i = 1 to NR do
+            // Check if noise mode exists
+            if size(modes_white_noise[i]) ≥ k+1 then
+                // Use corresponding noise mode with dynamic weighting
+                noise = modes_white_noise[i](k, :)
+                noise = noise / std(noise)
+                weighted_noise = η_k × Nstd × noise
+                
+                try
+                    [temp_imfs, ~, it] = emd(x - acum + std(x - acum) × weighted_noise, 
+                                              'MAXMODES', 1, 'MAXITERATIONS', MaxIter)
+                    
+                    if temp_imfs is not empty then
+                        temp = temp_imfs(1, :)
+                    else
+                        temp = x - acum
+                        it = 0
+                    end if
+                catch
+                    temp = x - acum
+                    it = 0
+                end try
+            else
+                // Extract without additional noise
+                try
+                    [temp_imfs, ~, it] = emd(x - acum, 'MAXMODES', 1, 'MAXITERATIONS', MaxIter)
+                    
+                    if temp_imfs is not empty then
+                        temp = temp_imfs(1, :)
+                    else
+                        temp = x - acum
+                        it = 0
+                    end if
+                catch
+                    temp = x - acum
+                    it = 0
+                end try
+            end if
+            
+            aux = aux + temp / NR
+            iter(i, k+1) = it
+        end for
+        
+        // Store extracted IMF
+        modes = [modes; aux]
+        aux = zeros(size(x))
+        acum = sum(modes, 1)
+        k = k+1
+    end while
+
+5.  // Add Final Residual as Last Mode
+    modes = [modes; (x - acum)]
+    
+    // Trim iteration matrix and rescale IMFs
+    iter = iter(:, 1:size(modes, 1))
+    modes = modes × std(original_x)
+    its = iter
+    
+    return modes, its
+-----------------------------------------------------------------------
+
+Function stop_criterion(signal, residual):
+-----------------------------------------------------------------------
+Input:  Original signal (signal), Current residual (residual)
+Output: Boolean indicating whether to continue extraction
+-----------------------------------------------------------------------
+1.  // Check number of extrema in residual
+    diff1 = diff(residual)
+    diff2 = diff(sign(diff1))
+    
+    // Continue if there are more than 2 sign changes in second derivative
+    if count_nonzero(diff2) > 2 then
+        return true
+    else
+        return false
+    end if
+-----------------------------------------------------------------------
+
+Function estimate_dominant_frequency(signal, mode_num):
+-----------------------------------------------------------------------
+Input:  Signal (signal), Mode number (mode_num)
+Output: Dominant frequency (f_dom)
+-----------------------------------------------------------------------
+1.  // Preprocessing
+    signal = signal - mean(signal)         // Remove DC component
+    N = length(signal)
+    
+    if N < 4 then
+        f_dom = 0.5                        // Default for short signals
+        return f_dom
+    end if
+
+2.  // Apply windowing and compute FFT
+    window = hamming(N)
+    signal_windowed = signal × window
+    
+    Y = fft(signal_windowed)
+    P2 = abs(Y/N)
+    P1 = P2(1:floor(N/2)+1)
+    P1(2:end-1) = 2 × P1(2:end-1)
+
+3.  // Frequency analysis
+    f = (0:floor(N/2)) / N
+    
+    if length(P1) > 1 then
+        [~, idx] = max(P1(2:end))
+        f_dom = f(idx+1)
+    else
+        f_dom = 0
+    end if
+
+4.  // Mode-dependent frequency adjustment
+    f_dom = f_dom × (1 / mode_num)
+    
+    // Ensure frequency is within bounds
+    f_dom = min(max(f_dom, 0.01), 0.5)
+    
+    return f_dom
+-----------------------------------------------------------------------

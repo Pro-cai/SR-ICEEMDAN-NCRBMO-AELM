@@ -1,0 +1,36 @@
+Function1: Levy(Dim)
+-----------------------------------------------------------------------
+Input:  Dimension (Dim)
+Output: Lévy flight step (o)
+-----------------------------------------------------------------------
+1.  beta = 1.5
+    
+2.  // Calculate sigma
+    sigma = (gamma(1 + beta) × sin(pi × beta / 2) / 
+             (gamma((1 + beta) / 2) × beta × 2^((beta - 1) / 2)))^(1 / beta)
+    
+3.  // Generate random vectors
+    u = randn(1, Dim) × sigma
+    v = randn(1, Dim)
+    
+4.  // Calculate Lévy step
+    step = u ./ abs(v).^(1 / beta)
+    
+5.  return step
+-----------------------------------------------------------------------
+
+Function2: SpaceBound(X, Up, Low)
+-----------------------------------------------------------------------
+Input:  Position vector (X), Upper bound (Up), Lower bound (Low)
+Output: Constrained position vector (X)
+-----------------------------------------------------------------------
+1.  Dim = length(X)
+    
+2.  // Identify out-of-bound dimensions
+    S = (X > Up) + (X < Low)
+    
+3.  // Repair out-of-bound positions with random reinitialization
+    X = (rand(1, Dim) × (Up - Low) + Low) × S + X × (1 - S)
+    
+4.  return X
+-----------------------------------------------------------------------

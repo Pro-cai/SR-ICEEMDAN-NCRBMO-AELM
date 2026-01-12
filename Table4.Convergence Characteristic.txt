@@ -1,0 +1,5 @@
+Convergence Stage	Main Behavior	Parameter Changes	Goal
+
+Early stage (t/T<0.3)	Strong exploration	High probability of B>0.5, larger CF	Explore the search space widely
+Middle stage (0.3≤t/T<0.7)	Balance exploration and exploitation	Fluctuating B, moderate CF	Balance global and local search
+Late stage (t/T≥0.7)	Strong exploitation	High probability of B≤0.5, smaller CF	Fine search near the optimal solution
